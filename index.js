@@ -1,4 +1,5 @@
 import { gql } from "apollo-server";
+import { ApolloServer } from "apollo-server";
 
 const persons = [
   {
@@ -23,7 +24,7 @@ const persons = [
   },
 ];
 
-const typeDefs = gql`
+const typeDefinitions = gql`
   type Person {
     name: String!
     phone: String
@@ -44,3 +45,12 @@ const resolvers = {
     allPersons: () => persons,
   },
 };
+
+const server = new ApolloServer({
+  typeDefs: typeDefinitions,
+  resolvers,
+});
+
+server.listen({ port: 3000 }).then(({ url }) => {
+  console.log(`🚀  Server ready at ${url}`);
+});
