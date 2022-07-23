@@ -1,5 +1,5 @@
 import { gql } from "apollo-server";
-import { ApolloServer } from "apollo-server";
+import { ApolloServer, UserInputError } from "apollo-server";
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import { v1 as uuid } from "uuid";
 
@@ -71,6 +71,12 @@ const resolvers = {
   Mutation: {
     addPerson: (parent, args) => {
       // const {name, phone, street, city} = args;
+
+      if (persons.find((p) => p.name === args.name))
+        throw new UserInputError("Name must be unique", {
+          invalidArgs: args.name,
+        });
+
       const person = { ...args, id: uuid() };
       persons.push(person);
 
