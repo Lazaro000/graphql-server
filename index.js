@@ -1,6 +1,7 @@
 import { gql } from "apollo-server";
 import { ApolloServer } from "apollo-server";
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
+import { v1 as uuid } from "uuid";
 
 const persons = [
   {
@@ -46,6 +47,15 @@ const typeDefinitions = gql`
     allPersons: [Person]!
     findPerson(name: String!): Person
   }
+
+  type Mutation {
+    addPerson(
+      name: String!
+      phone: String
+      street: String!
+      city: String!
+    ): Person
+  }
 `;
 
 const resolvers = {
@@ -56,6 +66,15 @@ const resolvers = {
       const { name } = args;
 
       return persons.find((person) => person.name === name);
+    },
+  },
+  Mutation: {
+    addPerson: (parent, args) => {
+      // const {name, phone, street, city} = args;
+      const person = { ...args, id: uuid() };
+      persons.push(person);
+
+      return person;
     },
   },
   Person: {
