@@ -20,6 +20,12 @@
       "street": "Pasaje Testing",
       "city": "Ibiza",
       "id": "3d599471-3436-11e9-bc57-8b80ba54c431"
+    },
+    {
+      "name": "Normie",
+      "street": "Calle Angular",
+      "city": "Alicante",
+      "id": "3d599971-3436-11e9-bc57-8b80ba54c431"
     }
   ]
 }

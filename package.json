@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "npx nodemon index.js",
     "dev": "nodemon index.js",
-    "json-server": "json-servevr --watch db.js"
+    "json-server": "json-server --watch db.json"
   },
   "keywords": [],
   "author": "Lazaro",
