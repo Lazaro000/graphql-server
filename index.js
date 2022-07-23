@@ -2,6 +2,7 @@ import { gql } from "apollo-server";
 import { ApolloServer, UserInputError } from "apollo-server";
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import { v1 as uuid } from "uuid";
+import axios from "axios";
 
 const persons = [
   {
@@ -67,15 +68,19 @@ const typeDefinitions = gql`
 const resolvers = {
   Query: {
     personCount: () => persons.length,
-    allPersons: () => {
+    allPersons: async (parent, args) => {
+      const { data: personsFromRestApi } = await axios.get(
+        "http://localhost:3000/persons"
+      );
+
       if (!args.phone) {
-        return persons;
+        return personsFromRestApi;
       }
 
       const byPhone = (person) =>
         args.phone === "YES" ? person.phone : !person.phone;
 
-      return persons.filter(byPhone);
+      return personsFromRestApi.filter(byPhone);
     },
     findPerson: (parent, args) => {
       const { name } = args;
