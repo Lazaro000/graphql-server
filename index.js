@@ -40,6 +40,7 @@ const typeDefinitions = gql`
   }
 
   type Person {
+    canDrink: Boolean
     name: String!
     phone: String
     address: Address!
