@@ -3,6 +3,8 @@ import { ApolloServer, UserInputError } from "apollo-server";
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import { v1 as uuid } from "uuid";
 import axios from "axios";
+import "./db.js";
+import { Person } from "./models/person.js";
 
 const persons = [
   {
@@ -68,58 +70,48 @@ const typeDefinitions = gql`
 
 const resolvers = {
   Query: {
-    personCount: () => persons.length,
+    personCount: () => Person.collection.countDocuments(),
     allPersons: async (parent, args) => {
-      /**
-       * ! Usar consumiendo una api externa
-       */
-      // const { data: personsFromRestApi } = await axios.get(
-      //   "http://localhost:3000/persons"
-      // );
-      // if (!args.phone) {
-      //   return personsFromRestApi;
-      // }
-      // const byPhone = (person) =>
-      //   args.phone === "YES" ? person.phone : !person.phone;
-      // return personsFromRestApi.filter(byPhone);
+      if (!args.phone) return Person.find({});
 
-      if (!args.phone) return persons;
-
-      const byPhone = (person) =>
-        args.phone === "YES" ? person.phone : !person.phone;
-
-      return persons.filter(byPhone);
+      return Person.find({ phone: { $exists: args.phone === "YES" } });
     },
     findPerson: (parent, args) => {
       const { name } = args;
 
-      return persons.find((person) => person.name === name);
+      return Person.findOne({ name });
     },
   },
   Mutation: {
-    addPerson: (parent, args) => {
-      // const {name, phone, street, city} = args;
+    addPerson: async (parent, args) => {
+      const person = new Person({ ...args });
 
-      if (persons.find((p) => p.name === args.name))
-        throw new UserInputError("Name must be unique", {
-          invalidArgs: args.name,
+      try {
+        await person.save();
+      } catch (err) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
         });
-
-      const person = { ...args, id: uuid() };
-      persons.push(person);
+      }
 
       return person;
     },
-    editNumber(parent, args) {
-      const personIndex = persons.findIndex((p) => p.name === args.name);
-      if (personIndex === -1) return null;
+    editNumber: async (parent, args) => {
+      const person = await Person.findOne({ name: args.name });
 
-      const person = persons[personIndex];
+      if (!person) return new Error("User not found");
 
-      const updatedPerson = { ...person, phone: args.phone };
-      persons[personIndex] = updatedPerson;
+      person.phone = args.phone;
 
-      return updatedPerson;
+      try {
+        await person.save();
+      } catch (err) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
+      }
+
+      return person;
     },
   },
   Person: {
