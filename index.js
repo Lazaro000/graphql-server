@@ -82,6 +82,7 @@ const typeDefinitions = gql`
     editNumber(name: String!, phone: String!): Person
     createUser(username: String!): User
     login(username: String!, password: String!): Token
+    addAsFriend(name: String!): User
   }
 `;
 
@@ -103,11 +104,18 @@ const resolvers = {
     },
   },
   Mutation: {
-    addPerson: async (parent, args) => {
+    addPerson: async (parent, args, context) => {
+      const { currentUser } = context;
+      if (!currentUser) throw new AuthenticationError("Not authenticated");
+
       const person = new Person({ ...args });
 
       try {
         await person.save();
+
+        currentUser.friends = currentUser.friends.concat(person);
+
+        await currentUser.save();
       } catch (err) {
         throw new UserInputError(error.message, {
           invalidArgs: args,
@@ -156,6 +164,21 @@ const resolvers = {
       return {
         value: jwt.sign(userForToken, JWT_SECRET),
       };
+    },
+    addAsFriend: async (parent, args, { currentUser }) => {
+      if (!currentUser) throw new AuthenticationError("Not authenticated");
+
+      const person = await Person.findOne({ name: args.name });
+
+      const nonFriendlyAlready = (person) =>
+        !currentUser.friends.map((p) => p._id).includes(person._id);
+
+      if (nonFriendlyAlready(person)) {
+        currentUser.friends = currentUser.friends.concat(person);
+        await currentUser.save();
+      }
+
+      return currentUser;
     },
   },
   Person: {
