@@ -5,6 +5,10 @@ import { v1 as uuid } from "uuid";
 import axios from "axios";
 import "./db.js";
 import { Person } from "./models/person.js";
+import { User } from "./models/user.js";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = "SECRET_KEY";
 
 const persons = [
   {
@@ -51,10 +55,21 @@ const typeDefinitions = gql`
     id: ID!
   }
 
+  type User {
+    username: String!
+    friends: [Person]!
+    id: ID!
+  }
+
+  type Token {
+    value: String!
+  }
+
   type Query {
     personCount: Int!
     allPersons(phone: YesNo): [Person]!
     findPerson(name: String!): Person
+    me: User
   }
 
   type Mutation {
@@ -65,6 +80,8 @@ const typeDefinitions = gql`
       city: String!
     ): Person
     editNumber(name: String!, phone: String!): Person
+    createUser(username: String!): User
+    login(username: String!, password: String!): Token
   }
 `;
 
@@ -80,6 +97,9 @@ const resolvers = {
       const { name } = args;
 
       return Person.findOne({ name });
+    },
+    me: (parent, args, context) => {
+      return context.currentUser;
     },
   },
   Mutation: {
@@ -113,6 +133,30 @@ const resolvers = {
 
       return person;
     },
+    createUser: (parent, args) => {
+      const user = new User({ username: args.username });
+
+      return user.save().catch((err) => {
+        throw new UserInputError(err.messagem, {
+          invalidArgs: args,
+        });
+      });
+    },
+    login: async (parent, args) => {
+      const user = await User.findOne({ username: args.username });
+
+      if (!user || args.password !== "midupassword")
+        throw new UserInputError("Wrong credentials");
+
+      const userForToken = {
+        username: user.username,
+        id: user._id,
+      };
+
+      return {
+        value: jwt.sign(userForToken, JWT_SECRET),
+      };
+    },
   },
   Person: {
     canDrink: (parent) => parent.age > 18,
@@ -130,6 +174,18 @@ const resolvers = {
 const server = new ApolloServer({
   typeDefs: typeDefinitions,
   resolvers,
+  context: async ({ req }) => {
+    const auth = req ? req.headers.authorization : null;
+
+    if (auth && auth.toLowerCase().startsWith("bearer ")) {
+      const token = auth.substring(7);
+
+      const { id } = jwt.verify(token, JWT_SECRET);
+      const currentUser = await User.findById(id).populate("friends");
+
+      return { currentUser };
+    }
+  },
   plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
 });
 
