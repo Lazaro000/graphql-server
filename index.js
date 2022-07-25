@@ -1,5 +1,10 @@
-import { gql } from "apollo-server";
-import { ApolloServer, UserInputError } from "apollo-server";
+import {
+  ApolloServer,
+  UserInputError,
+  gql,
+  AuthenticationError,
+  PubSub,
+} from "apollo-server";
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 import { v1 as uuid } from "uuid";
 import axios from "axios";
@@ -8,7 +13,13 @@ import { Person } from "./models/person.js";
 import { User } from "./models/user.js";
 import jwt from "jsonwebtoken";
 
+const pubsub = new PubSub();
+
 const JWT_SECRET = "SECRET_KEY";
+
+const SUSCRIPTION_EVENTS = {
+  PERSON_ADDDED: "PERSON_ADDED",
+};
 
 const persons = [
   {
@@ -84,6 +95,10 @@ const typeDefinitions = gql`
     login(username: String!, password: String!): Token
     addAsFriend(name: String!): User
   }
+
+  type Suscription {
+    personAdded: Person!
+  }
 `;
 
 const resolvers = {
@@ -121,6 +136,8 @@ const resolvers = {
           invalidArgs: args,
         });
       }
+
+      pubsub.publish(SUSCRIPTION_EVENTS.PERSON_ADDDED, { personAdded: person });
 
       return person;
     },
@@ -192,6 +209,11 @@ const resolvers = {
     address2: (parent) => `${parent.street}, ${parent.city}`,
     check: () => "laza",
   },
+  Subscription: {
+    personAdded: {
+      subscribe: () => pubsub.asyncIterator(SUSCRIPTION_EVENTS.PERSON_ADDDED),
+    },
+  },
 };
 
 const server = new ApolloServer({
@@ -212,6 +234,7 @@ const server = new ApolloServer({
   plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
 });
 
-server.listen().then(({ url }) => {
+server.listen().then(({ url, subscriptionsUrl }) => {
   console.log(`🚀  Server ready at ${url}`);
+  console.log(`Suscriptions ready at ${subscriptionsUrl}`);
 });
